@@ -1,0 +1,28 @@
+# Phase 0 local stack: a ZAP daemon + a deliberately-vulnerable target.
+#
+#   docker compose up -d
+#   export SCAN_ALLOWLIST=localhost,juice-shop
+#   python run_scan.py --target http://localhost:3000 --out ./out
+#
+# ZAP is started with its API open on 8090 and the API key disabled, which is
+# fine for a local, throwaway PoC. Do NOT expose this configuration publicly.
+
+services:
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    command: >
+      zap.sh -daemon -host 0.0.0.0 -port 8090
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
+      -config api.disablekey=true
+    ports:
+      - "8090:8090"
+    # ZAP must be able to reach the target service by its compose name.
+    depends_on:
+      - juice-shop
+
+  # OWASP Juice Shop — an intentionally vulnerable app, safe & legal to scan.
+  juice-shop:
+    image: bkimminich/juice-shop
+    ports:
+      - "3000:3000"

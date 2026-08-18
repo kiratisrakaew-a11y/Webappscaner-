@@ -1,0 +1,8 @@
+# ZAP automation client
+python-owasp-zap-v2.4>=0.0.21
+
+# Anthropic Claude SDK (AI assessment)
+anthropic>=0.40.0
+
+# HTTP + retries for orchestration
+requests>=2.31.0
