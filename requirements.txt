@@ -1,8 +1,14 @@
-# ZAP automation client
-python-owasp-zap-v2.4>=0.0.21
-
-# Anthropic Claude SDK (AI assessment)
-anthropic>=0.40.0
-
-# HTTP + retries for orchestration
+# --- scan pipeline (Phase 0) ---
+python-owasp-zap-v2.4>=0.0.21   # ZAP automation client
+anthropic>=0.40.0               # Claude SDK (AI assessment)
 requests>=2.31.0
+
+# --- API service + worker (Phase 1) ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.6.0
+
+# --- Google Cloud backend (only needed when RUN_MODE=cloud) ---
+google-cloud-firestore>=2.16.0
+google-cloud-storage>=2.16.0
+google-cloud-run>=0.10.0

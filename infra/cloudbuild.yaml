@@ -1,0 +1,38 @@
+# Build + push both images to Artifact Registry.
+# Usage: gcloud builds submit --config infra/cloudbuild.yaml \
+#          --substitutions=_REGION=asia-southeast1,_REPO=webscan
+substitutions:
+  _REGION: asia-southeast1
+  _REPO: webscan
+
+steps:
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - infra/Dockerfile.api
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-api:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-api:latest
+      - .
+
+  - id: build-worker
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - infra/Dockerfile.worker
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-worker:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-worker:latest
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-api
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/webscan-worker
+
+options:
+  machineType: E2_HIGHCPU_8

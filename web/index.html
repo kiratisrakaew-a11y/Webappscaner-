@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Web Vulnerability Scanner</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+         margin: 0; background: #f5f6f8; color: #1a1a1a; }
+  header { background: #0f172a; color: #fff; padding: 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  .card { background: #fff; border: 1px solid #e2e5ea; border-radius: 10px;
+          padding: 20px; margin-bottom: 18px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+  input[type=url] { width: 100%; padding: 10px 12px; border: 1px solid #cbd2dc;
+                    border-radius: 8px; font-size: 15px; }
+  button { margin-top: 12px; background: #2563eb; color: #fff; border: 0;
+           padding: 10px 18px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .status { font-size: 14px; margin-top: 12px; }
+  .warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+          border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eef0f3; }
+  a.report { color: #2563eb; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0b1220; color: #e5e7eb; }
+    .card { background: #111a2e; border-color: #1f2b45; }
+    input[type=url] { background: #0b1220; color: #e5e7eb; border-color: #334155; }
+    td, th { border-color: #1f2b45; }
+    .warn { background: #2a1e08; color: #fcd34d; border-color: #4a3a12; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ AI Web Vulnerability Scanner</h1>
+  <p>Black-box DAST (OWASP ZAP) + AI assessment · OWASP Top 10 / WSTG / CWE</p>
+</header>
+<main>
+  <div class="warn">
+    ⚠️ สแกนได้เฉพาะระบบที่คุณเป็นเจ้าของหรือมีหนังสืออนุญาตเท่านั้น
+    target ต้องอยู่ใน allowlist ของเซิร์ฟเวอร์ (SCAN_ALLOWLIST)
+  </div>
+
+  <div class="card">
+    <label for="target">Target URL</label>
+    <input id="target" type="url" placeholder="http://localhost:3000" value="http://localhost:3000">
+    <button id="go">เริ่มสแกน</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card">
+    <strong>งานล่าสุด</strong>
+    <table id="jobs"><tbody></tbody></table>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function startScan() {
+  const target = $("target").value.trim();
+  $("go").disabled = true;
+  $("status").textContent = "กำลังส่งงาน...";
+  try {
+    const res = await fetch("/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      $("status").textContent = "❌ " + (data.detail || "error");
+    } else {
+      $("status").textContent = "✅ คิวงานแล้ว: " + data.job_id;
+      pollJob(data.job_id);
+    }
+  } catch (e) {
+    $("status").textContent = "❌ " + e;
+  } finally {
+    $("go").disabled = false;
+    refreshJobs();
+  }
+}
+
+async function pollJob(id) {
+  const res = await fetch("/scan/" + id);
+  const job = await res.json();
+  $("status").textContent = "งาน " + id + " · สถานะ: " + job.status;
+  refreshJobs();
+  if (job.status === "queued" || job.status === "running") {
+    setTimeout(() => pollJob(id), 3000);
+  } else if (job.status === "done") {
+    $("status").innerHTML = '✅ เสร็จแล้ว — <a class="report" href="/report/' + id + '" target="_blank">เปิดรายงาน</a>';
+  } else if (job.status === "failed") {
+    $("status").textContent = "❌ ล้มเหลว: " + (job.error || "");
+  }
+}
+
+async function refreshJobs() {
+  const res = await fetch("/jobs?limit=10");
+  const { jobs } = await res.json();
+  const rows = jobs.map(j => {
+    const link = j.status === "done"
+      ? '<a class="report" href="/report/' + j.id + '" target="_blank">report</a>' : "-";
+    return "<tr><td>" + j.id + "</td><td>" + j.target + "</td><td>" + j.status + "</td><td>" + link + "</td></tr>";
+  }).join("");
+  $("jobs").querySelector("tbody").innerHTML =
+    "<tr><th>ID</th><th>Target</th><th>Status</th><th>Report</th></tr>" + rows;
+}
+
+$("go").addEventListener("click", startScan);
+refreshJobs();
+</script>
+</body>
+</html>

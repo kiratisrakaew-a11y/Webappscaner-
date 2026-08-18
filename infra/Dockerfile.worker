@@ -1,0 +1,30 @@
+# Worker image (Cloud Run Job). Self-contained: bundles OWASP ZAP so the job
+# has no external scanner dependency. The entrypoint starts the ZAP daemon,
+# waits for it, then runs the scan pipeline for one job.
+FROM ghcr.io/zaproxy/zaproxy:stable
+
+USER root
+WORKDIR /app
+
+# ZAP image is Debian-based; add Python for our pipeline code.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+# Worker needs the scanner + AI + cloud deps (not the web framework).
+RUN pip3 install --no-cache-dir --break-system-packages \
+      python-owasp-zap-v2.4 anthropic requests \
+      google-cloud-firestore google-cloud-storage google-cloud-run
+
+COPY scanner/ ./scanner/
+COPY cloud/ ./cloud/
+COPY worker/ ./worker/
+COPY infra/worker-entrypoint.sh /app/worker-entrypoint.sh
+RUN chmod +x /app/worker-entrypoint.sh
+
+# ZAP listens locally; the pipeline connects to it via ZAP_PROXY.
+ENV ZAP_PROXY=http://127.0.0.1:8090
+ENV PYTHONPATH=/app
+
+ENTRYPOINT ["/app/worker-entrypoint.sh"]

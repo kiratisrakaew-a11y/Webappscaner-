@@ -72,10 +72,19 @@ python run_scan.py --target http://localhost:3000 --out ./out
 
 > ไม่มี `ANTHROPIC_API_KEY`? ใส่ `--no-ai` เพื่อรัน pipeline โดยข้ามขั้น AI (ใช้ mapping แบบ static แทน) เหมาะกับทดสอบ ZAP อย่างเดียว
 
+## รันเป็น service (API + web UI)
+
+นอกจาก CLI แล้ว มี API service (FastAPI) + หน้าเว็บ submit ให้ด้วย — รัน local ได้เลย:
+```bash
+docker compose up -d                 # ZAP + Juice Shop
+export SCAN_ALLOWLIST=localhost,juice-shop
+uvicorn api.main:app --port 8080     # เปิด http://localhost:8080
+```
+โหมด local: worker รันใน background thread, เก็บผลใน `./data` (ไม่ต้องมี GCP)
+
 ## Roadmap
-- **Phase 0 (นี้):** PoC local — pipeline ครบวงจร
-- **Phase 1:** ขึ้น Google Cloud (Cloud Run service + Cloud Run Job worker + Storage/Firestore)
+- **Phase 0 ✅:** PoC local — pipeline ครบวงจร (CLI)
+- **Phase 1 ✅:** API service + worker + Google Cloud deploy — ดู **[DEPLOY.md](DEPLOY.md)**
+  (Cloud Run service + Cloud Run Job + Firestore + Cloud Storage, deploy ด้วย `infra/deploy.sh`)
 - **Phase 2:** เสริม testssl/nuclei, authenticated scan, ลด false positive
 - **Phase 3:** production hardening (ownership verification, audit log, PDF, multi-user)
-
-ดูรายละเอียดสถาปัตยกรรม cloud ในไฟล์แผนของโปรเจกต์

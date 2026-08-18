@@ -1,0 +1,21 @@
+# API service image (Cloud Run service). Lightweight — no ZAP here; the API
+# only validates + queues, the worker does the scanning.
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install only the deps the API needs (skip ZAP client to keep it small).
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+      fastapi "uvicorn[standard]" pydantic requests \
+      google-cloud-firestore google-cloud-storage google-cloud-run
+
+COPY scanner/ ./scanner/
+COPY cloud/ ./cloud/
+COPY worker/ ./worker/
+COPY api/ ./api/
+COPY web/ ./web/
+
+ENV PORT=8080
+# Cloud Run provides $PORT; bind uvicorn to it.
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT}"]
